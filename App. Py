@@ -1,0 +1,157 @@
+import streamlit as st
+import pandas as pd
+
+st.set_page_config(
+    page_title="Data Analyzer",
+    page_icon="📊",
+    layout="wide"
+)
+
+st.title("📊 Data Analyzer")
+st.write("Upload your data and the app will analyze it and display the results.")
+
+# Upload data
+uploaded_file = st.file_uploader(
+    "Upload a CSV file",
+    type=["csv"]
+)
+
+if uploaded_file is not None:
+    try:
+        # Read the uploaded file
+        data = pd.read_csv(uploaded_file)
+
+        st.success("Data uploaded successfully!")
+
+        # -------------------------
+        # DATA PREVIEW
+        # -------------------------
+        st.subheader("Data Preview")
+        st.dataframe(data, use_container_width=True)
+
+        # -------------------------
+        # BASIC INFORMATION
+        # -------------------------
+        st.subheader("Data Information")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Rows", data.shape[0])
+
+        with col2:
+            st.metric("Columns", data.shape[1])
+
+        with col3:
+            st.metric(
+                "Missing Values",
+                int(data.isnull().sum().sum())
+            )
+
+        # -------------------------
+        # NUMERICAL ANALYSIS
+        # -------------------------
+        numerical_columns = data.select_dtypes(
+            include=["number"]
+        ).columns.tolist()
+
+        if numerical_columns:
+            st.subheader("Numerical Analysis")
+
+            selected_column = st.selectbox(
+                "Select a numerical column",
+                numerical_columns
+            )
+
+            column = data[selected_column]
+
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric("Count", int(column.count()))
+
+            with col2:
+                st.metric("Average", round(column.mean(), 2))
+
+            with col3:
+                st.metric("Minimum", round(column.min(), 2))
+
+            with col4:
+                st.metric("Maximum", round(column.max(), 2))
+
+            st.subheader(f"Statistics for {selected_column}")
+
+            statistics = column.describe()
+
+            st.dataframe(
+                statistics.to_frame(),
+                use_container_width=True
+            )
+
+            # Chart
+            st.subheader(f"{selected_column} Distribution")
+
+            chart_data = data[[selected_column]].dropna()
+
+            st.bar_chart(chart_data)
+
+        else:
+            st.info("No numerical columns were found in the uploaded data.")
+
+        # -------------------------
+        # CATEGORICAL ANALYSIS
+        # -------------------------
+        categorical_columns = data.select_dtypes(
+            include=["object", "category", "bool"]
+        ).columns.tolist()
+
+        if categorical_columns:
+            st.subheader("Categorical Analysis")
+
+            selected_category = st.selectbox(
+                "Select a categorical column",
+                categorical_columns
+            )
+
+            counts = (
+                data[selected_category]
+                .value_counts(dropna=False)
+                .reset_index()
+            )
+
+            counts.columns = ["Value", "Count"]
+
+            st.dataframe(
+                counts,
+                use_container_width=True
+            )
+
+            st.bar_chart(
+                counts.set_index("Value")
+            )
+
+        # -------------------------
+        # MISSING DATA
+        # -------------------------
+        st.subheader("Missing Data")
+
+        missing_data = (
+            data.isnull()
+            .sum()
+            .reset_index()
+        )
+
+        missing_data.columns = ["Column", "Missing Values"]
+
+        st.dataframe(
+            missing_data,
+            use_container_width=True
+        )
+
+    except Exception as error:
+        st.error(
+            f"The data could not be analyzed: {error}"
+        )
+
+else:
+    st.info("Upload a CSV file to begin the analysis.")
